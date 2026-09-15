@@ -1,0 +1,9 @@
+# Fase 1 — detección + agrupación por apariencia
+torch
+torchvision
+opencv-python
+numpy
+matplotlib
+scikit-learn      # KMeans y métricas, hitos 1.5 y 1.6
+pycocotools       # lectura de anotaciones en formato COCO, hito 1.0
+jupyter
