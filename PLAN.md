@@ -77,29 +77,33 @@ mejoras mejoran.
 precisión 0,732** en `valid` con umbral 0,20. Entrenando en Colab (T4), ~1 min/época.
 Pesos y dataset en Drive (`Colab Notebooks/`). `test` sigue sin tocarse.
 
-### Próxima sesión, en este orden
+### Próxima sesión — Fase 2: el punto de apoyo
 
-**1. Verificación visual — antes de entrenar más.** Coger ~5 imágenes de `valid`,
-pintar las cajas predichas con `dibujarCajas` y mirarlas. Con recall 0,95 tienen que
-estar casi todos los jugadores marcados. Si se ven huecos evidentes, hay un fallo en
-la medición y hay que cazarlo antes de seguir. Un número grande merece una
-comprobación que no dependa del mismo código que lo produjo.
+**0. Cerrar Fase 1** (5 min). Anotar la fila del último tramo de 10 épocas en la tabla
+y guardar los pesos con su nombre. Con eso el detector queda cerrado y no se vuelve.
 
-**2. Si cuadra, seguir entrenando en tramos.** El coste caía 0,02 por época al acabar
-(0,6605), así que queda recorrido. Mismo protocolo: tramos de 10, medir en `valid` con
-umbral 0,20, parar cuando un tramo dé menos de 0,01 de recall.
+**1. El punto de apoyo.** Una caja `(x1,y1,x2,y2)` hay que reducirla a **un punto del
+suelo**, porque la homografía transforma puntos, no rectángulos. La aproximación de
+trabajo es el centro del borde inferior: `((x1+x2)/2, y2)`.
 
-⚠️ Con ResNet50 el riesgo de sobreajuste es mayor que con MobileNet — más parámetros
-sobre las mismas 298 imágenes. La señal a vigilar: coste de train bajando y recall de
-`valid` bajando a la vez. Si aparece, parar y guardar el mejor tramo anterior.
+Función nueva, probablemente en un `src/geometria.py`. Verificación visual obligatoria:
+pintar el punto sobre las imágenes y comprobar que cae en los pies.
 
-**3. Rehacer el barrido de umbral.** El 0,20 se eligió para MobileNet. ResNet tiene
-otros scores y otro punto de equilibrio; con precisión en 0,732 probablemente convenga
-bajarlo bastante.
+Casos que van a fallar y hay que ver con los ojos antes de decidir nada:
+- jugador en carrera → la caja llega al pie más adelantado, no al punto de apoyo real
+- jugador saltando → no hay contacto con el suelo
+- portero tirado en el suelo → la caja es ancha y baja, el centro inferior no significa nada
 
-**4. Cerrar Fase 1 y pasar a Fase 2.** Con el detector resuelto, el proyecto sigue en
-el punto de apoyo del jugador. No quedarse afinando el detector: es la pieza más
-intercambiable de todo el pipeline.
+No inventar correcciones antes de mirar cuántos casos hay. Puede que la aproximación
+simple baste para la inmensa mayoría.
+
+**2. Reencajar el clasificador de equipos.** Los hitos 1.4/1.5 se hicieron sobre cajas
+*anotadas*. Ahora hay que pasarle las cajas *predichas*, que son más ruidosas. Es un
+cambio pequeño en `pipeline.analizarImagen` y conviene comprobar que no se rompe.
+
+**Recordatorio de prioridad:** el detector está resuelto (0,948). El proyecto está
+parado en la geometría, no en el modelo. No volver a abrir el detector hasta tener la
+línea dibujada de extremo a extremo.
 
 ### Riesgo abierto
 
@@ -163,6 +167,39 @@ entrenada con millones de imágenes.
 
 **Y la pérdida seguía bajando al acabar la época** — evidencia directa de que el
 entrenamiento se cortó, no de que se estancara.
+
+### Verificación visual del 0,948 — superada
+
+Notebook `1.3-prueba-ResNet.ipynb`. Cinco imágenes de `valid`, predicciones en rojo
+(umbral 0,20, clases 2/3/4) y anotaciones reales en verde sobre el mismo `ax`.
+
+**Resultado: prácticamente todo verde lleva su rojo encima.** No se aprecian huecos
+— jugadores anotados sin detectar — que es lo que restaría recall. El 0,948 se
+sostiene mirándolo con los ojos, no solo en la métrica.
+
+**De dónde sale la pérdida de precisión**, mirando los rojos sin verde:
+
+- gente en la banda y detrás de las vallas publicitarias (fotógrafos, personal,
+  entrenadores). Son personas reales, pero no están anotadas como jugador/árbitro.
+- algún duplicado sobre un mismo jugador, pero **muchos menos de los que parecía**
+  en las imágenes de `train`.
+
+Ni una sola caja en la grada, con miles de personas visibles. El balón tampoco se
+cajea (correcto: se filtra por clase).
+
+**Implicación:** el grueso de los falsos positivos está **fuera del terreno de juego**,
+así que el filtro geométrico de la Fase 3 (homografía) los elimina sin tocar el modelo.
+La precisión de 0,732 subirá sola. Y eso a su vez permitirá **bajar el umbral** para
+ganar más recall sin pagar el precio que hoy se pagaría.
+
+**Consecuencia de planificación: la Fase 1 se puede dar por cerrada.** El detector
+está resuelto. Seguir afinándolo antes de tener el pipeline completo es optimizar la
+pieza más intercambiable del proyecto.
+
+⚠️ Dos veces se miraron imágenes de `train` creyendo que eran de `valid`: la primera
+por la ruta, la segunda por editar la celda 0 sin re-ejecutarla. El título del gráfico
+decía "valid" porque estaba escrito a mano. **Lección: que el título salga del dato,
+no de una constante escrita a mano.**
 
 ### 16-sep: el backbone era el cuello de botella desde el principio
 
