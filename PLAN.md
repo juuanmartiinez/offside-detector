@@ -73,6 +73,41 @@ mejoras mejoran.
 
 ## Dónde lo dejé
 
+**Estado al cerrar el 16-sep:** ResNet50 descongelado, 10 épocas, **recall 0,948 ·
+precisión 0,732** en `valid` con umbral 0,20. Entrenando en Colab (T4), ~1 min/época.
+Pesos y dataset en Drive (`Colab Notebooks/`). `test` sigue sin tocarse.
+
+### Próxima sesión, en este orden
+
+**1. Verificación visual — antes de entrenar más.** Coger ~5 imágenes de `valid`,
+pintar las cajas predichas con `dibujarCajas` y mirarlas. Con recall 0,95 tienen que
+estar casi todos los jugadores marcados. Si se ven huecos evidentes, hay un fallo en
+la medición y hay que cazarlo antes de seguir. Un número grande merece una
+comprobación que no dependa del mismo código que lo produjo.
+
+**2. Si cuadra, seguir entrenando en tramos.** El coste caía 0,02 por época al acabar
+(0,6605), así que queda recorrido. Mismo protocolo: tramos de 10, medir en `valid` con
+umbral 0,20, parar cuando un tramo dé menos de 0,01 de recall.
+
+⚠️ Con ResNet50 el riesgo de sobreajuste es mayor que con MobileNet — más parámetros
+sobre las mismas 298 imágenes. La señal a vigilar: coste de train bajando y recall de
+`valid` bajando a la vez. Si aparece, parar y guardar el mejor tramo anterior.
+
+**3. Rehacer el barrido de umbral.** El 0,20 se eligió para MobileNet. ResNet tiene
+otros scores y otro punto de equilibrio; con precisión en 0,732 probablemente convenga
+bajarlo bastante.
+
+**4. Cerrar Fase 1 y pasar a Fase 2.** Con el detector resuelto, el proyecto sigue en
+el punto de apoyo del jugador. No quedarse afinando el detector: es la pieza más
+intercambiable de todo el pipeline.
+
+### Riesgo abierto
+
+El notebook con los cambios de Colab (`device`, rutas de Drive, traslado de tensores)
+**solo existe en Colab**. Subirlo a GitHub con Archivo → Guardar una copia en GitHub,
+o se pierde con la sesión.
+
+
 ### PASO 2 — circuito completo validado
 
 Los cuatro sub-pasos funcionan de punta a punta:
@@ -94,7 +129,32 @@ Ficheros nuevos: `src/DetectionDataset.py` (adaptador a PyTorch + `collate`),
 | COCO sin afinar (sobre `train`) | — | — | — | 0,700 | 0,643 |
 | **Roboflow afinado (techo)** | — | — | — | **0,983** | **0,983** |
 | MobileNet, prueba de humo | 1 | 2 | congelado | 0,537 | 0,357 |
-| MobileNet, 15-sep | 8 (¿+8 previas?) | 4 | congelado | 0,563 | 0,509 |
+| MobileNet, 15-sep | 16 | 4 | congelado | 0,563 | 0,509 |
+| MobileNet descongelado (Colab T4) | 16+10 | 4 | **descongelado**, lr 0,0005 | **0,622** | **0,557** |
+| MobileNet descongelado, 2º tramo | 16+20 | 4 | descongelado, lr 0,0005 | 0,657 | 0,626 |
+| MobileNet descongelado, 3º tramo | 16+30 | 4 | descongelado, lr 0,0005 | 0,650 | **0,689** |
+
+A partir de aquí se mide en **`valid`** y con **umbral 0,20** (ver barrido). Las filas
+de arriba están en `test` con umbral 0,50 y **no son comparables** con las de abajo.
+
+| Experimento (en `valid`, umbral 0,20) | épocas | recall | precisión |
+|---|---|---|---|
+| Descongelado, 3º tramo | 16+30 | 0,713 | 0,457 |
+| Descongelado, 4º tramo | 16+40 | **0,737** | **0,490** |
+| Descongelado, 5º tramo (20 ép.) | 16+60 | 0,748 | 0,527 |
+| **ResNet50 descongelado** | 10 | **0,948** | **0,732** |
+
+**Criterio de parada cumplido.** 20 épocas para +0,011 de recall (≈0,005 por cada 10,
+por debajo del umbral de 0,01 que se fijó). La palanca "más épocas descongelado" está
+agotada. El coste sigue bajando muy despacio (0,6564 → 0,6355) pero ya no se traduce
+en recall: el modelo exprime lo que sus características le permiten ver.
+
+Siguiente palanca: **ResNet50** (`crearModelo(ligero=False)`), un solo parámetro.
+Backbone más grande y mejores características. En T4 es asumible. Mismo protocolo:
+descongelado, lr 0,0005, medir en `valid` con umbral 0,20 contra la línea 0,748.
+Si ResNet50 tampoco mueve nada, la siguiente es **aumento de datos** (volteo
+horizontal, caja → `(W-x2, y1, W-x1, y2)`, solo en train), que ataca la causa de
+fondo: 298 imágenes.
 | | | | | | |
 
 **El 0,537 no es un fracaso: es una prueba de humo.** La cabeza partió de pesos
@@ -103,6 +163,161 @@ entrenada con millones de imágenes.
 
 **Y la pérdida seguía bajando al acabar la época** — evidencia directa de que el
 entrenamiento se cortó, no de que se estancara.
+
+### 16-sep: el backbone era el cuello de botella desde el principio
+
+ResNet50 descongelado, lr 0,0005, **10 épocas desde cero** (cabeza aleatoria):
+
+    1,3648 · 0,9624 · 0,8749 · 0,8200 · 0,7804 · 0,7514 · 0,7225 · 0,6970 · 0,6759 · 0,6605
+
+En `valid`, umbral 0,20: **recall 0,948 · precisión 0,732**
+
+Contra MobileNet con 76 épocas: 0,748 / 0,527. **+0,200 de recall en una décima parte
+del entrenamiento.**
+
+Es coherente con lo que ya sabíamos: el techo medido de Roboflow (0,983) decía que el
+dataset es aprendible con alta precisión. Lo que faltaba no eran épocas ni ajustes —
+era capacidad del extractor de características. MobileNetV3 es un backbone pensado
+para móviles; los jugadores pequeños y tapados no se distinguen en sus características,
+y por eso ninguna cantidad de entrenamiento los hacía aparecer.
+
+**El coste seguía bajando con fuerza en la época 9** (0,6605, con caídas de ~0,02 por
+época). Quedan muchas épocas útiles.
+
+**Lo que no fue en balde de los dos días con MobileNet:** el barrido de umbral (que
+valía más que 30 épocas), la separación train/valid/test, el criterio de parada, y
+saber leer coste vs recall. Ese método es lo que permitió detectar en 10 épocas que
+ResNet era otra liga — y lo que evitará creerse un número sin verificarlo.
+
+Pendiente antes de dar el 0,948 por bueno: **verificación visual**. Pintar las cajas
+predichas sobre varias imágenes de `valid` con `dibujarCajas` y mirarlas. Un número
+alto puede venir de un fallo en la medición; los ojos no se engañan igual.
+
+### Barrido de umbral sobre `valid` (49 imgs) — modelo 16+30 descongelado
+
+| umbral | recall | precisión | Δrecall | Δprecisión | ganancia/coste |
+|---|---|---|---|---|---|
+| 0,05 | 0,797 | 0,303 | +0,026 | −0,066 | 0,39 |
+| 0,10 | 0,771 | 0,369 | +0,027 | −0,047 | 0,57 |
+| 0,15 | 0,744 | 0,416 | +0,031 | −0,041 | **0,76** |
+| 0,20 | 0,713 | 0,457 | +0,019 | −0,033 | 0,58 |
+| 0,25 | 0,694 | 0,490 | +0,018 | −0,037 | 0,49 |
+| 0,30 | 0,676 | 0,527 | +0,036 | −0,071 | 0,51 |
+| 0,40 | 0,640 | 0,598 | — | — | — |
+
+**No satura.** El recall sigue subiendo hasta 0,797 con umbral 0,05. El "codo" que
+parecía haber en 0,25 sobre `test` era ruido de 25 imágenes: con 49 la curva es
+suave y no hay punto de inflexión que elija por ti.
+
+La última columna es recall ganado por precisión perdida en cada escalón. **El mejor
+canje está entre 0,15 y 0,20**; por debajo de 0,10 se paga mucho por poco.
+
+**Decisión pendiente y por qué no es solo métrica:** con umbral 0,15 seis de cada
+diez cajas son falsas. Esas cajas entran luego al clustering de equipos y al cálculo
+de la línea. Hasta que exista el filtro geométrico de dentro/fuera del campo (Fase 3),
+conviene no irse al extremo: **0,20 como valor de trabajo**, y revisarlo cuando la
+homografía pueda descartar lo que cae fuera del campo. Entonces el recall alto sale
+casi gratis.
+
+Nota de método: el umbral se elige en `valid`. `test` (0,753 a umbral 0,25) quedó
+contaminado al haberse usado para elegir, así que esa cifra está optimista. La
+estimación honesta a 0,25 es **0,694**.
+
+### 16-sep: el umbral de score valía más que 30 épocas
+
+Mismo modelo (16+30 épocas, descongelado), **sin entrenar nada**, cambiando solo el
+corte con el que se filtran las predicciones:
+
+| umbral | recall | precisión |
+|---|---|---|
+| 0,3 | **0,733** | 0,538 |
+| 0,4 | 0,699 | 0,620 |
+| 0,5 | 0,650 | 0,689 |
+
+**+0,083 de recall gratis**, más de lo que dio cualquier tramo de 10 épocas, y sin
+un segundo de GPU. Esas detecciones ya existían: se estaban tirando en el filtro.
+
+**La lección:** el umbral es una decisión de *medición*, no del modelo. Durante 30
+épocas se estuvo midiendo a través de un corte fijo de 0,5 que el modelo ya había
+dejado atrás — según se recalibraban sus scores, ese corte iba dejando fuera
+detecciones correctas. La caída de recall del 3er tramo era eso, no sobreajuste.
+
+**Consecuencia para la tabla:** todas las filas anteriores están medidas a 0,5. El
+umbral pasa a ser una columna, no una constante escondida en el notebook.
+
+Pendiente: bajar a 0,2 y 0,25 para ver dónde satura el recall. Para este proyecto
+el recall pesa más que la precisión — un jugador que falta descoloca la línea de
+fuera de juego; una caja de más la filtra después la geometría del campo.
+
+### 16-sep: descongelar era la palanca
+
+Migrado a Colab (Tesla T4). Época: **13 s** frente a ~50 s congelado en el portátil,
+y descongelado allí no llegaba a terminar.
+
+Verificación de la mudanza antes de tocar nada: 1 época con la configuración de ayer
+(congelado, lr 0,005) → coste 0,7206, justo donde se quedó el 15-sep. Migración limpia.
+
+Descongelado entero, lr 0,0005, 10 épocas partiendo de `modelo_16ep.pt`:
+
+    0,7182 · 0,7169 · 0,7140 · 0,7141 · 0,7091 · 0,7038 · 0,7091 · 0,6989 · 0,6992 · 0,6947
+
+**recall 0,563 → 0,622 · precisión 0,509 → 0,557**
+
+Es la primera vez que el recall se mueve de verdad. Comparación del ritmo:
+
+| | épocas | Δ recall |
+|---|---|---|
+| congelado | 16 | +0,026 |
+| descongelado | 10 | **+0,059** |
+
+Confirma el diagnóstico: el cuello de botella eran las características fijas del
+backbone, no la cabeza. Al poder adaptarse al fútbol, empiezan a aparecer jugadores
+que antes no se detectaban.
+
+**El coste sigue bajando en la época 9** (0,6947) y **el recall de test sube a la vez**.
+Las dos señales apuntan igual: quedan épocas por aprovechar. Es el único caso en que
+"más épocas" está justificado.
+
+Siguiente: seguir descongelado, en tramos de 10, **midiendo test entre tramo y tramo**.
+Lo que se busca es el punto donde el coste siga bajando pero el recall de test se
+gire — ese es el comienzo del sobreajuste, y con 298 imágenes y el backbone suelto
+va a llegar. Sin medir cada tramo, ese punto se pasa sin verlo.
+
+Pesos en Drive con nombre por experimento; no pisar `modelo_16ep.pt`, que respalda
+la fila de congelado.
+
+### Decisión del 15-sep: entrenar en Colab
+
+**El problema.** Al descongelar el backbone el entrenamiento se volvió inviable en
+local: el portátil (IdeaPad 3 15ALC6, Ryzen con gráficos integrados, sin CUDA) se
+calentaba y una tanda no terminaba. Congelado solo se calculaban gradientes de la
+cabeza; descongelado, de toda la red. Es esperable, no es un fallo.
+
+**La decisión: Colab, con Kaggle como plan B.** Las tiradas en GPU duran minutos,
+así que la ejecución en segundo plano de Kaggle (hasta 12 h) no aporta nada. Lo que
+decide es dónde viven los `.pt` entre sesiones: Drive se monta con una línea y da
+carpeta persistente. En Kaggle habría que versionar el notebook o subirlos como
+Dataset. Si en hora punta Colab no da GPU, Kaggle (P100, más rápida que la T4).
+
+**Lo que hay que montar, por orden:**
+
+1. Clonar el repo en el notebook. `src/` importa tal cual — aquí se paga haberlo
+   modularizado en vez de dejarlo todo en celdas.
+2. Dataset a Drive una vez (39 MB) y apuntar `CocoDataset` a esa ruta. Evita
+   rebajarlo de Roboflow cada vez y quita el problema de la clave.
+3. **`device`** — el único cambio de código real. El bucle actual no lo tiene: hay
+   que mover modelo y tensores a la GPU.
+4. Medir **una** época antes de lanzar nada largo.
+5. `torch.save` apuntando a Drive, y cada pocas épocas — Colab desconecta a los
+   ~90 min de inactividad y borra el disco local.
+
+**Alternativa más barata si se sigue en local:** descongelar solo las últimas capas
+con `trainable_backbone_layers` (0-5, por defecto 3) en lugar de todo el backbone.
+Las primeras capas detectan bordes y texturas, que valen igual para fútbol que para
+COCO; lo específico del dominio está en las últimas.
+
+⚠️ No repetir tandas con backbone congelado y lr 0,005: 16 épocas de evidencia dicen
+que el recall se queda en 0,563. Cumple el criterio de parada él solo.
 
 ### Lectura de la tanda del 15-sep
 
@@ -123,8 +338,18 @@ en esas características, más épocas de cabeza no lo van a rescatar.
 **Conclusión: el techo del backbone congelado está en ~0,56 de recall.** Más épocas
 así no es la palanca. La siguiente es descongelar.
 
-⚠️ Dato pendiente de confirmar: si la celda 0 cargó pesos previos del `.pt`, el total
-real de épocas es 16, no 8. Corregir la fila antes de comparar con la siguiente.
+Confirmado: 16 épocas en dos tandas de 8 (guardados a las 14:22 y 14:28 del 15-sep).
+La segunda tanda arrancó en 0,763 justamente porque venía entrenada.
+
+Pesos: `outputs/modelo_16ep.pt` (= `modelo_mobilenet_8ep_b4.pt`, mismo modelo).
+
+**Siguiente paso: descongelar Y bajar el lr, las dos cosas a la vez.** Bajar el `lr`
+con el backbone congelado no haría nada: seguiría entrenando solo la cabeza, que es
+justo lo que ya está agotado. El `lr` baja *porque* se descongela — al soltar los
+pesos preentrenados, los gradientes de 0,005 los destrozarían.
+
+En `crearModelo`: `congelarBackbone=False`. En el optimizer: `lr=0.0005`.
+Y kernel nuevo cargando `modelo_16ep.pt`, para partir de lo ya aprendido.
 
 ### Plan de entrenamiento, una variable cada vez
 
