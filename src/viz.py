@@ -69,3 +69,10 @@ def recortesTorso(ds, imgId, cajas=None):
 
     return recortes
 
+def dibujarPuntos(ax, puntos, color="cyan", tamano=30):
+
+    for punto in puntos:
+        
+        x, y = punto
+        ax.scatter(x, y, s=tamano, c=color, zorder=3)
+

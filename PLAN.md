@@ -73,6 +73,79 @@ mejoras mejoran.
 
 ## Dónde lo dejé
 
+### FASE 2 CERRADA — 17-sep
+
+`src/geometria.py` → `puntoApoyo(caja)` devuelve `(x, y)`: `((x1+x2)/2, y2)`, el centro
+del borde inferior. `src/viz.py` → `dibujarPuntos(ax, puntos, color, tamano)`.
+Notebook `1.4-puntos-jugadores.ipynb`.
+
+**Verificado sobre 5 imágenes de `valid`** con cajas *anotadas* (no predichas, para
+aislar el error del punto del error del detector). Los puntos caen en los pies de forma
+consistente. Ninguno de los casos difíciles previstos (salto, jugador en el suelo)
+aparece con este ángulo de cámara — elevado y lejano, jugadores erguidos.
+
+No hace falta estimación de pose (`keypointrcnn_resnet50_fpn`). Queda apuntada como
+mejora **solo si** un ángulo de cámara distinto rompe la aproximación.
+
+### El balón: pendiente, y no es un detalle
+
+Corrección de Juan, y tiene razón: **el fuera de juego lo determina el balón tanto como
+el penúltimo defensor.** Un jugador está en posición ilegal si está más cerca de la
+línea de meta que el balón *y* que el penúltimo defensor. Si el balón va por delante,
+manda el balón.
+
+Hoy el balón se filtra por clase y se descarta. Falta `posicionBalon(caja)` en
+`geometria.py`, **separada de `puntoApoyo`** aunque de momento calcule lo mismo: son
+dos aproximaciones con fiabilidad muy distinta, y el día que se mejore el balón no
+debe tocarse nada de los jugadores.
+
+### Limitación conocida: no se puede recuperar la altura
+
+Con **una sola cámara**, un objeto en el aire no tiene posición determinable en el
+plano del campo. Un balón a 3 m de altura se proyecta varios metros más lejos de donde
+está; lo mismo un jugador saltando. En una jugada de fuera de juego eso decide.
+
+Los sistemas profesionales usan varias cámaras por esto. **No se va a resolver en este
+proyecto**: se asume balón a ras de suelo y se deja escrito como limitación.
+
+### Objetivo de la próxima sesión: las correspondencias (paso 1)
+
+Solo el paso 1. Es el único difícil de la Fase 3 y el resto depende de él.
+
+**Qué hay que producir:** una lista de 4 o más pares `(punto_imagen, punto_campo)` —
+píxeles ↔ metros — para una imagen concreta, y comprobar que la matriz que sale de
+ellos transforma bien.
+
+**Ruta: a mano primero.** Marcar los puntos pinchando sobre la imagen, no detectar
+líneas automáticamente. Es la regla de la línea base aplicada aquí: con una homografía
+que *sabes* correcta se pueden probar los pasos 3 y 4; si se automatiza desde el
+principio y la línea sale torcida, no habrá forma de saber si falla la detección de
+líneas o la geometría.
+
+**De dónde salen los metros:** el campo es un plano con medidas estandarizadas
+(105 × 68 m, área grande 16,5 m, círculo central 9,15 m de radio). Las esquinas del
+área, los cruces de líneas y la intersección del círculo con el medio campo tienen
+coordenadas conocidas. Elegir puntos **bien repartidos** por la imagen, no los cuatro
+juntos en una esquina.
+
+**Verificación del paso 1:** transformar puntos de los que se sabe la respuesta
+(otra esquina del área, el punto de penalti) y comprobar que caen donde deben, en
+metros. Si el penalti sale a 11 m de la línea de meta, la matriz es buena.
+
+### Fase 3 completa, para contexto
+
+
+
+Convertir los puntos de **píxeles de la imagen** a **metros del campo real**. Es la
+pieza central del proyecto, porque en la imagen la perspectiva miente: dos jugadores a
+la misma altura del campo salen a alturas distintas en píxeles según su distancia a la
+cámara. Sin esto, "quién está más adelantado" no se puede responder.
+
+Y resuelve de paso dos cosas pendientes: el **filtro de dentro/fuera del campo** (que
+elimina fotógrafos y personal de banda, subiendo la precisión sin tocar el modelo) y
+el equipo del portero.
+
+
 **Estado al cerrar el 16-sep:** ResNet50 descongelado, 10 épocas, **recall 0,948 ·
 precisión 0,732** en `valid` con umbral 0,20. Entrenando en Colab (T4), ~1 min/época.
 Pesos y dataset en Drive (`Colab Notebooks/`). `test` sigue sin tocarse.
@@ -147,6 +220,12 @@ de arriba están en `test` con umbral 0,50 y **no son comparables** con las de a
 | Descongelado, 4º tramo | 16+40 | **0,737** | **0,490** |
 | Descongelado, 5º tramo (20 ép.) | 16+60 | 0,748 | 0,527 |
 | **ResNet50 descongelado** | 10 | **0,948** | **0,732** |
+| **ResNet50, 2º tramo — MODELO FINAL Fase 1** | 20 | **0,950** | **0,759** |
+
+**Fase 1 cerrada el 16-sep.** El 2º tramo bajó el coste de 0,6605 a 0,5321 (−0,11)
+y el recall solo +0,002: coste cayendo y métrica de `valid` plana es la firma del
+sobreajuste. Techo de Roboflow: 0,983. No reabrir el detector hasta tener la línea
+dibujada de extremo a extremo.
 
 **Criterio de parada cumplido.** 20 épocas para +0,011 de recall (≈0,005 por cada 10,
 por debajo del umbral de 0,01 que se fijó). La palanca "más épocas descongelado" está
