@@ -1,6 +1,7 @@
 from matplotlib.patches import Rectangle
 import matplotlib.pyplot as plt
 from pathlib import Path
+from src.lineas import puntosDeRecta
 
 COLORES = {
     "player":     "red",
@@ -76,3 +77,10 @@ def dibujarPuntos(ax, puntos, color="cyan", tamano=30):
         x, y = punto
         ax.scatter(x, y, s=tamano, c=color, zorder=3)
 
+def dibujarLineas(ax, rectas, ancho, alto):
+
+    for i, recta in enumerate(rectas)   :
+        (xa, ya), (xb, yb) = puntosDeRecta(recta, ancho, alto)
+        ax.plot([xa, xb], [ya, yb])
+        ax.text((xa+xb)/2, (ya+yb)/2, str(i), color="white", fontsize=10,
+        bbox=dict(fc="black", ec="none", pad=1))

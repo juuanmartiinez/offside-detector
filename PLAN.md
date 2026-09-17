@@ -71,7 +71,245 @@ mejoras mejoran.
 
 ---
 
+## PLAN CERRADO — terminar en 2 semanas
+
+**Entregable:** una imagen de fútbol con la línea de fuera de juego trazada
+correctamente, y un README que diga qué hace el sistema solo y qué se le da como dato.
+
+| sesión | qué | verificación |
+|---|---|---|
+| 1 | `H` e inversa en `geometria.py`; `cv2.warpPerspective` para enderezar la 41 | el círculo central sale **redondo**, no ovalado |
+| 2 | puntos a metros; filtro `0<=x<=105`, `0<=y<=68`; equipos sobre cajas limpias | desaparecen fotógrafos y banquillo; el clustering mejora |
+| 3 | dirección de ataque y equipo defensor como constantes; penúltimo defensor; **la línea** | la línea cae donde debe. **Proyecto terminado** |
+| 4 | 4-6 imágenes más con marcado semiautomático (detectar rectas, elegir por número) | ~1 min por imagen |
+| 5 | README, limpieza, cierre | |
+
+**Fuera de alcance, decidido y no se reabre:** calibración automática de la cámara,
+vídeo, y medir las fases 3-5 (imposible: el dataset no trae verdad para ellas).
+
+### Idea descartada: las cuatro líneas extremas
+
+Propuesta de Juan: quedarse con la recta más a la izquierda, la más a la derecha, la
+más arriba y la más abajo — serían las dos bandas y las dos líneas de meta, y sus
+cruces las cuatro esquinas del campo. Homografía automática y sin intervención.
+
+**Razonamiento correcto, premisa falsa aquí.** Medido sobre las 49 de `valid`:
+
+| el césped se sale del encuadre por… | |
+|---|---|
+| derecha | **100%** |
+| izquierda | 94% |
+| abajo | 84% |
+| arriba | **20%** |
+
+**Campo entero visible: 0 imágenes.** Son planos de televisión de medio campo. La
+recta "más a la derecha" nunca es la línea de meta, porque la línea de meta no está
+en la foto — sería la de medio campo etiquetada como `x=105` cuando vale `52.5`, y la
+homografía saldría coherente consigo misma y completamente equivocada. Fallo silencioso.
+
+**Lo que sí se salva:** la banda lejana se ve en el **80%** de las imágenes, y no hace
+falta Hough para encontrarla — es el borde superior de la máscara de `campo.py`.
+
+### Estado de la detección de líneas (`src/lineas.py`)
+
+Con `minLineLength=100` bajan de 34 a 13 rectas, y las tres que importan están:
+la de medio campo, la del área grande y la banda lejana (duplicada en varias). Sobran
+el marco de la portería, un poste de luz, la barandilla del banquillo y la marca de
+agua de SCOUTINGFEED.
+
+⚠️ **No cruzar rectas de la misma familia.** Medio campo y línea del área son
+paralelas en la realidad; su cruce en la imagen es el punto de fuga, no un punto del
+césped. Separar las rectas en dos familias por `theta % 180` y cruzar solo entre
+familias distintas (idea de Juan, y es correcta).
+
+Pendiente si se retoma: ordenar los grupos de `_fusionar` por longitud total de los
+segmentos que los sostienen y quedarse con los 6 primeros.
+
 ## Dónde lo dejé
+
+### SESIÓN 1 CERRADA — Fase 3 funciona de extremo a extremo
+
+`src/geometria.py` → `calcularHomografia(correspondencias)` devuelve `(H, Hinv)`, y
+`aMetros(H, puntos)` transforma píxeles a metros escondiendo el `reshape(-1,1,2)` que
+exige `cv2.perspectiveTransform`.
+
+**Verificado:** `H @ Hinv` da la identidad, y la ida y vuelta metros → píxeles → metros
+devuelve los metros de partida. La vista cenital con `warpPerspective` sale coherente
+(área en `x=16.5`, medio campo en `x=52.5`).
+
+⚠️ El contorno trapezoidal de la vista cenital **no es un fallo**: es el cono de visión
+de la cámara proyectado sobre el césped. Con el campo entero en cuadro saldría un
+rectángulo lleno.
+
+### Mapa táctico de la id 41 — el resultado del día
+
+24 detecciones → **23 dentro del campo, 1 descartada** (la de la línea de banda).
+El portero cae dentro del área pequeña, el grupo de jugadores donde estaba el amasijo,
+y todos en la mitad izquierda porque era la única en cuadro.
+
+**El filtro de campo es una comparación de dos números** (`0<=x<=105`, `0<=y<=68`) y
+hace lo que la máscara de color no podía: descarta lo que está detrás de la portería
+y más allá de la banda.
+
+### Lo que se aprendió por el camino
+
+**Se transforman puntos, no imágenes.** La homografía solo vale para lo que está en el
+plano del césped. Los pies sí; el cuerpo no — por eso los jugadores salen como churretes
+al enderezar la foto. El detector trabaja siempre sobre la imagen original.
+
+**Los árbitros fuera** (`PERSONAS = {2, 3}`): no determinan la línea ni dejan a nadie
+en juego.
+
+**El NMS apenas aportó** (34 → 33): los duplicados no eran el problema. El exceso de
+detecciones lo explicaba la precisión ya medida — 0,457 a umbral 0,20 sobre 34 cajas
+son ~15 falsas, y 34−15 = 19 ≈ los 19 jugadores anotados. Los números cuadraban solos.
+
+**Umbral 0,20 → 0,50** deja 23 en el campo contra 20 reales. ⚠️ Pero ese 0,50 se eligió
+mirando el recuento de **una** imagen. El umbral definitivo sale del barrido sobre
+`valid` **con el filtro de campo puesto** — sesión 2.
+
+### Siguiente: sesión 2
+
+1. Barrido de umbral sobre `valid` **con filtro de campo**. El equilibrio ha cambiado:
+   antes se pagaba precisión para no perder recall; ahora la geometría limpia lo de fuera.
+2. Clasificador de equipos sobre las cajas ya limpias. Aquel clustering fallaba en 148
+   de 298 imágenes, y buena parte del ruido eran árbitros y gente de banda que ahora
+   ya no llegan.
+
+
+### Cierre del 17-sep
+
+**Hecho hoy:** Fase 2 cerrada (`puntoApoyo`, verificada sobre 5 imágenes), homografía
+de la id 41 resuelta y verificada, y `src/campo.py` funcionando.
+
+**`src/campo.py`** — `mascaraCampo(imagen)`, `estaEnCampo`, `filtrarEnCampo`.
+Segmentación de verde en HSV + cierre morfológico + componente conexa mayor + relleno
+de huecos por inundación desde los bordes. Probada en 6 estadios distintos sin tocar
+parámetros.
+
+⚠️ **Detecta césped, no terreno de juego reglamentario.** Objeción de Juan, y es
+correcta: detrás de la portería hay césped, y junto a los banquillos también. El color
+no sabe dónde están las líneas de meta y de banda. Así que un fotógrafo tras la
+portería pasa el filtro. **El filtro exacto es la homografía** (`0<=x<=105`,
+`0<=y<=68`); `campo.py` queda como filtro grueso (se carga la grada entera) y, sobre
+todo, como máscara para restringir la detección de líneas al césped.
+
+### Decisión: enderezar la imagen
+
+`cv2.warpPerspective` con la homografía devuelve una vista cenital con el campo recto.
+Tres ventajas: verificación inmediata (si el círculo central sale **redondo** y no
+ovalado, la matriz es buena), el fuera de juego se vuelve una comparación de
+coordenadas sin perspectiva que engañe, y los límites del campo son evidentes.
+
+### Siguiente: `src/lineas.py` — detección de las líneas
+
+Receta acordada:
+
+1. `realce(imagen)` — top-hat morfológico (kernel elíptico ~13)
+2. poner a cero fuera de `mascaraCampo`, con `np.where`
+3. binarizar con Otsu
+4. `cv2.HoughLinesP` → **segmentos**
+5. **fusionar** segmentos de la misma línea real
+6. `interseccion(r1, r2)` resolviendo el sistema 2×2
+
+**Trampas anotadas:**
+
+- `HoughLinesP` devuelve una dimensión de más: aplanar con `reshape(-1, 4)`.
+- El paso 5 es el difícil. Conviene pasar cada segmento a forma `(rho, theta)`: en esa
+  representación, dos trozos de la misma línea tienen valores casi idénticos y agrupar
+  es comparar dos números. Con las coordenadas de los extremos, no.
+- La misma recta se escribe `(rho, theta)` o `(-rho, theta+π)`. Sin contemplarlo,
+  salen duplicadas.
+
+⚠️ **No usar el centro de la elipse del círculo central como `(52.5, 34)`.** Una
+homografía no conserva centros: el centro de la elipse proyectada no es la proyección
+del centro del círculo. Error de varios metros. Lo que sí es exacto son los **cortes**
+del círculo con la línea de medio campo, porque las intersecciones sí se conservan.
+Las esquinas del área también valen: son cruces de rectas.
+
+
+### FASE 3, PASO 1 RESUELTO — 17-sep
+
+Correspondencias para `valid` id 41 (`744b27_7_1_...jpg`, 576×576). Origen en el córner
+línea de meta izquierda × banda lejana; X 0→105 hacia el centro; Y 0→68 de la banda
+lejana (paneles) a la cercana (banquillos).
+
+```python
+CORRESPONDENCIAS = [
+    ((215, 228), (16.5, 13.84)),   # esquina área grande, lado paneles
+    (( 30, 361), (16.5, 54.16)),   # esquina área grande, lado cercano
+    ((498, 220), (52.5,  0.00)),   # medio campo × banda lejana
+    ((499, 278), (52.5, 24.85)),   # círculo × medio campo, arriba
+    ((504, 360), (52.5, 43.15)),   # círculo × medio campo, abajo
+]
+```
+
+**Error de reproyección: 0,17 – 0,55 m.** Verificado además visualmente proyectando el
+campo modelo sobre la foto con la inversa: banda lejana, medio campo, círculo central
+y área grande encajan sobre las líneas del césped.
+
+**Cómo se leyeron los píxeles.** Las líneas son muy tenues en el original. Lo que lo
+hizo posible fue un realce local (top-hat morfológico, `cv2.MORPH_TOPHAT` con elemento
+elíptico 13×13) que destaca estructuras claras y finas sin depender del brillo
+absoluto. Un realce por "blancura" (saturación + luminosidad) falló: se quedó con los
+paneles publicitarios y borró las líneas del césped.
+
+**Truco de identificación:** la línea del área grande se reconoce porque el arco de
+penalti nace y muere sobre ella. Y el mejor punto de la imagen fue la esquina del área
+del lado cercano — vértice limpio, sin jugadores encima.
+
+⚠️ Toda la verificación es de la mitad visible. La banda cercana (`y = 68`) queda fuera
+de encuadre, así que la homografía **extrapola** ahí y nadie ha comprobado ese tramo.
+Tenerlo presente si algo raro pasa con jugadores del borde inferior.
+
+### Siguiente: pasos 2, 3 y 4 de la Fase 3
+
+1. Guardar `H` en algún sitio del código (¿`src/geometria.py`, junto a `puntoApoyo`?).
+2. Transformar los puntos de apoyo de los jugadores detectados a metros.
+3. **Filtro dentro/fuera del campo**: `0 <= x <= 105` y `0 <= y <= 68`. Esto elimina
+   fotógrafos, personal de banda y suplentes — sube la precisión sin tocar el modelo,
+   y permite bajar el umbral de score para ganar recall casi gratis.
+4. Y con eso, Fase 4: la línea de fuera de juego es una recta de X constante en metros,
+   proyectada de vuelta a píxeles con la inversa.
+
+
+### DECISIÓN DE ALCANCE — 17-sep
+
+**El dataset no trae verdad para las fases 3-5.** Las anotaciones son cajas de
+jugadores: no hay puntos del campo, ni homografías, ni etiquetas de fuera de juego.
+Así que de la Fase 3 en adelante **no hay métrica que calcular**. El proyecto pasa de
+medible a demostrable, y eso no es un fallo de planificación: es lo que da este dataset.
+
+**Decisión: homografía a mano, sobre una sola imagen** (`valid` id 41). Con ella se
+construye el resto del pipeline — filtro de campo, equipos, línea de fuera de juego —
+y el proyecto queda completo de extremo a extremo y enseñable.
+
+Alternativas descartadas y por qué:
+
+- *Herramienta de marcado para 5-10 imágenes*: fontanería que no añade nada conceptual.
+  Se puede hacer después si se quiere enseñar sobre varios partidos.
+- *Detección automática de líneas*: subproyecto de semanas (Hough o segmentación,
+  identificar qué línea es cuál, emparejar con el modelo del campo) **y sin forma de
+  medir si acierta**, por lo de arriba.
+- *Cambiar de dataset* a uno con keypoints de cancha: permitiría medir, pero obliga a
+  rehacer el detector. No compensa a estas alturas.
+
+**El marcado a mano es de una vez.** Una vez fijada la matriz de la 41, todo lo que
+venga después (transformar puntos, filtrar, trazar la línea) es código genérico que
+funcionaría con cualquier homografía que se le diera.
+
+### Sistema de coordenadas fijado para la id 41
+
+Origen `(0,0)`: córner donde la línea de meta **izquierda** se junta con la banda
+**lejana** (la de los paneles publicitarios). Queda fuera de encuadre — da igual.
+
+- **X** crece hacia el centro del campo: 0 → 105. Medio campo en `x = 52.5`.
+- **Y** crece de la banda lejana a la cercana: 0 → 68. Paneles `y = 0`, banquillos `y = 68`.
+
+Puntos utilizables en esa imagen: esquinas del área grande `(16.5, 13.84)` y
+`(16.5, 54.16)`, cruce área × línea de meta `(0, 13.84)`, medio campo × banda lejana
+`(52.5, 0)`, círculo × medio campo `(52.5, 24.85)` y `(52.5, 43.15)`.
+
 
 ### FASE 2 CERRADA — 17-sep
 
