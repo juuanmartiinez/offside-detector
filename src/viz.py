@@ -74,7 +74,6 @@ def recortesTorso(ds, imgId, cajas=None):
 def dibujarPuntos(ax, puntos, color="cyan", tamano=30):
 
     for punto in puntos:
-        
         x, y = punto
         ax.scatter(x, y, s=tamano, c=color, zorder=3)
 
@@ -100,6 +99,8 @@ def imprimirCenital(ax, imagen, H, escala=10, L=105.0, W=68.0):
 
 def dibujarCampo(ax, L=105.0, W=68.0, color="white", grosor=2):
 
+    ax.set_facecolor("#3f8f4a")
+
     ax.plot([0, L, L, 0, 0], [0, 0, W, W, 0], color=color, lw=grosor)
     ax.plot([L/2, L/2], [0, W], color=color, lw=grosor)
     ax.add_patch(plt.Circle((L/2, W/2), 9.15, fill=False,
@@ -115,3 +116,8 @@ def dibujarCampo(ax, L=105.0, W=68.0, color="white", grosor=2):
     ax.set_xlim(-5, L + 5)
     ax.set_ylim(W + 5, -5)
     ax.set_aspect("equal")
+
+def dibujarPuntosCenital(ax, puntos, color="yellow"):
+    xs, ys = zip(*puntos)
+    ax.scatter(xs, ys, s=130, c=color, ec="black", lw=1.2, zorder=5,
+    label=f"en el campo ({len(puntos)})")

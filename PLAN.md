@@ -125,6 +125,72 @@ familias distintas (idea de Juan, y es correcta).
 Pendiente si se retoma: ordenar los grupos de `_fusionar` por longitud total de los
 segmentos que los sostienen y quedarse con los 6 primeros.
 
+## LOS DOS PUNTOS QUE QUEDAN — 18-sep
+
+Con esto el proyecto termina. La detección ya no es el cuello de botella (0,950, verificada).
+
+### PUNTO 1 — homografía automática, vía API de Roboflow
+
+**Decidido.** Modelo público `football-field-detection-f07vi/14`: un YOLOv8-pose que
+detecta **32 puntos característicos** del campo. Con cuatro visibles basta para la
+homografía.
+
+- modelo: https://universe.roboflow.com/roboflow-jvuqo/football-field-detection-f07vi
+- coordenadas de los 32 puntos: `SoccerPitchConfiguration` en
+  https://github.com/roboflow/sports/blob/main/sports/configs/soccer.py
+- necesita `inference` y `supervision`, y clave de API de Roboflow
+
+**El seam ya existe:** basta escribir `correspondenciasAuto(imagen)` que devuelva el
+mismo formato `[(pixel, metros), ...]` que las manuales. `calcularHomografia`,
+`aMetros`, el filtro y el mapa cenital no cambian.
+
+⚠️ **Trampa de unidades, comprobada en su código:** `SoccerPitchConfiguration` usa
+**centímetros** y un campo de **120 × 70 m** (`width=7000`, `length=12000`). El
+proyecto usa metros y 105 × 68. Mezclarlos no da error: el filtro `0<=x<=105`
+descartaría a todo el mundo. Elegir un convenio y escribirlo aquí.
+
+(Para el fuera de juego, que el modelo asuma 120×70 introduce error de escala pero
+**no cambia el orden** de los jugadores en el eje, y la línea se devuelve a píxeles con
+la inversa. Lo que rompe es mezclar, no elegir.)
+
+⚠️ La clave va en `.env` (con `.env` en `.gitignore`) o en el panel de secretos de
+Colab. Nunca en una celda.
+
+### PUNTO 2 — el reparto por equipos
+
+**Es lo que va a causar errores reales:** un jugador en el equipo equivocado mueve la
+línea de sitio.
+
+Estado medido sobre la id 41 con cajas predichas: **17 / 6**, debería ser ~10/10. En la
+imagen se ven cajas del mismo color sobre camisetas rojas y blancas indistintamente.
+
+Contaminación detectada en la entrada:
+- el **portero** (`PERSONAS` estaba en `{2,3}`; para clasificar debe ser `{3}`) — viste
+  equipación distinta a la de su propio equipo y arrastra el centroide
+- **árbitros que el modelo etiqueta como `player`** — esos no los quita el filtro de clase
+
+**Primer paso, antes de tocar nada: el scatter del descriptor.**
+- dos nubes separadas → el descriptor sirve, el fallo está en cómo se llama a KMeans
+- una sola mancha → ningún clustering lo va a separar; hay que cambiar la información
+
+Candidatos, por orden de lo que suelen aportar:
+
+1. **El recorte.** `bandaCentral` coge 25-75% horizontal y 15-45% vertical. Entre brazos
+   y piernas se cuela césped, y la mediana mezcla camiseta con hierba.
+2. **El descriptor.** Hoy resume toda la camiseta en **un** color mediano. Un histograma
+   de tonos conserva mucho más: distingue "rojo liso" de "blanco con franjas rojas",
+   que con una mediana salen casi iguales.
+3. Limpiar los árbitros residuales.
+
+### Y después, la línea
+
+Tres decisiones, dos de ellas declaradas a mano para la imagen: qué equipo defiende,
+hacia dónde se ataca, y el defensa más retrasado.
+
+⚠️ El fuera de juego se mide contra el **penúltimo adversario contando al portero**.
+Como el portero suele ser el más retrasado, tomar **el defensa de campo más retrasado**
+da la misma línea. Falla con el portero adelantado fuera de su área. Limitación aceptada.
+
 ## Dónde lo dejé
 
 ### SESIÓN 1 CERRADA — Fase 3 funciona de extremo a extremo
