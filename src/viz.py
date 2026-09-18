@@ -2,6 +2,7 @@ from matplotlib.patches import Rectangle
 import matplotlib.pyplot as plt
 from pathlib import Path
 from src.lineas import puntosDeRecta
+import numpy as np, cv2
 
 COLORES = {
     "player":     "red",
@@ -84,3 +85,33 @@ def dibujarLineas(ax, rectas, ancho, alto):
         ax.plot([xa, xb], [ya, yb])
         ax.text((xa+xb)/2, (ya+yb)/2, str(i), color="white", fontsize=10,
         bbox=dict(fc="black", ec="none", pad=1))
+
+def imprimirCenital(ax, imagen, H, escala=10, L=105.0, W=68.0):
+
+    S = np.array([[escala, 0, 0],
+                  [0, escala, 0],
+                  [0, 0,      1]], dtype=np.float64)
+
+    ancho, alto = int(L * escala), int(W * escala)
+    cenital = cv2.warpPerspective(np.asarray(imagen), S @ H, (ancho, alto))
+
+    ax.imshow(cenital, extent=[0, L, W, 0])
+    ax.set_aspect("equal")
+
+def dibujarCampo(ax, L=105.0, W=68.0, color="white", grosor=2):
+
+    ax.plot([0, L, L, 0, 0], [0, 0, W, W, 0], color=color, lw=grosor)
+    ax.plot([L/2, L/2], [0, W], color=color, lw=grosor)
+    ax.add_patch(plt.Circle((L/2, W/2), 9.15, fill=False,
+                            color=color, lw=grosor))
+
+    for x0, signo in ((0, 1), (L, -1)):
+        ax.plot([x0, x0 + signo*16.5, x0 + signo*16.5, x0],
+                [13.84, 13.84, 54.16, 54.16], color=color, lw=grosor)
+        ax.plot([x0, x0 + signo*5.5, x0 + signo*5.5, x0],
+                [24.84, 24.84, 43.16, 43.16], color=color, lw=grosor)
+        ax.scatter([x0 + signo*11], [W/2], s=18, c=color, zorder=4)
+
+    ax.set_xlim(-5, L + 5)
+    ax.set_ylim(W + 5, -5)
+    ax.set_aspect("equal")

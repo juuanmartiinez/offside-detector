@@ -33,14 +33,19 @@ def mascaraCampo(imagen, tono=(32, 92), satMin=45, valMin=35, cierre=15):
             cv2.floodFill(fuera, flood, semilla, 2)
     return mascara | (fuera == 1)
 
+def enCampo(punto, L=105.0, W=68.0):
+    x, y = punto
+    return 0 <= x <= L and 0 <= y <= W
 
-def estaEnCampo(mascara, punto):
-    x, y = int(round(punto[0])), int(round(punto[1]))
-    alto, ancho = mascara.shape
-    if not (0 <= x < ancho and 0 <= y < alto):
-        return False
-    return bool(mascara[y, x])
+def separarPorCampo(puntos, L=105.0, W=68.0):
 
+    dentro = []
+    fuera = []
 
-def filtrarEnCampo(mascara, puntos):
-    return [p for p in puntos if estaEnCampo(mascara, p)]
+    for punto in puntos:
+        if enCampo(punto, L, W):
+            dentro.append(punto)
+        else:
+            fuera.append(punto)
+
+    return dentro, fuera
