@@ -129,9 +129,12 @@ segmentos que los sostienen y quedarse con los 6 primeros.
 
 Con esto el proyecto termina. La detección ya no es el cuello de botella (0,950, verificada).
 
-### PUNTO 1 — homografía automática, vía API de Roboflow
+### PUNTO 1 — homografía automática, vía API de Roboflow ~~DESCARTADO~~
 
-**Decidido.** Modelo público `football-field-detection-f07vi/14`: un YOLOv8-pose que
+> Superado el 19-sep por la vía semiautomática de clics (sección siguiente).
+> Se conserva por si algún día interesa quitar al usuario de la ecuación.
+
+**Decidido en su día.** Modelo público `football-field-detection-f07vi/14`: un YOLOv8-pose que
 detecta **32 puntos característicos** del campo. Con cuatro visibles basta para la
 homografía.
 
@@ -155,6 +158,97 @@ la inversa. Lo que rompe es mezclar, no elegir.)
 
 ⚠️ La clave va en `.env` (con `.env` en `.gitignore`) o en el panel de secretos de
 Colab. Nunca en una celda.
+
+### PUNTO 1 — CERRADO 19-sep, por clics en vez de Roboflow
+
+**La API de Roboflow queda descartada.** No por mala, sino porque la vía
+semiautomática resuelve el mismo problema sin clave de API, sin dependencias
+nuevas (`inference`, `supervision`) y sin la trampa de unidades de 120×70 cm.
+El usuario pincha 4 puntos y sale la homografía de **cualquier** imagen.
+
+`src/calibracion.py`:
+
+- `PUNTOS_CAMPO` — catálogo de 27 puntos del campo con sus coordenadas en metros
+  (córners, esquinas de áreas grande y pequeña por dentro y por fuera, puntos de
+  penalti, medio campo y cortes del círculo central).
+- `marcarPuntos(imagen, orden)` — abre la imagen con `%matplotlib tk`, recoge
+  `len(orden)` clics con `plt.ginput(n, timeout=0)` y devuelve directamente el
+  formato `[(pixel, metros), ...]` que ya comía `calcularHomografia`.
+
+El seam previsto funcionó: no hubo que tocar `calcularHomografia`, `aMetros`, el
+filtro de campo ni el mapa cenital.
+
+⚠️ `centro` (52.5, 34) está en el catálogo pero **no se debe pinchar**: el
+centroide visual de la elipse no es la proyección del centro del círculo. Los
+buenos son intersecciones de líneas y puntos de penalti.
+
+⚠️ `marcarPuntos` ya crea su propia figura. Crear otra con `plt.subplots()` antes
+de llamarla manda los clics a la figura equivocada y deja una ventana tk zombi que
+puede **bloquear el import lock** del kernel: se cuelga al importar un módulo nuevo
+con un `KeyboardInterrupt` en `_lock_unlock_module` que no tiene nada que ver con
+el código. Reiniciar el kernel.
+
+#### La verificación, y lo que enseñó
+
+Comparadas las dos homografías de la id 41 (la de 4 clics contra la medida a mano)
+proyectando **los mismos** 19 jugadores con cada una.
+
+El primer número, la distancia absoluta entre las dos proyecciones, dio mediana
+1,43 m y máximo 4,64 m. **Ese número no sirve para decidir nada**, porque el fuera
+de juego no se mide en absoluto: si las dos homografías desplazan a todo el mundo
+igual, el veredicto no cambia. Lo que gobierna es cuánto varía el desplazamiento
+**entre jugadores**:
+
+```python
+d = aMetros(H_a, puntos)[:, 0] - aMetros(H_b, puntos)[:, 0]
+np.abs(d[:, None] - d[None, :]).max()     # peor error posible en un veredicto
+```
+
+Dio 1,90 m. Pero el máximo sobre 171 pares es un estadístico pésimo, y al mirar el
+vector entero ordenado por X apareció un corte limpio:
+
+| zona | jugadores | desplazamiento `d` |
+|---|---|---|
+| x ≤ 27,8 (la jugada) | 14 | −0,06 … +0,39 |
+| x ≥ 41,9 (centro del campo) | 5 | −1,51 … −0,29 |
+
+Sin solape. El grupo de la jugada se mueve **en bloque** (~+0,2), y todo el
+desacuerdo gordo vive en los jugadores lejos de los puntos pinchados. Es
+extrapolación, y son justo los jugadores que no intervienen en la jugada.
+
+**Error real de fuera de juego en esta imagen: ±0,45 m**, la dispersión dentro del
+grupo. Nótese que tres jugadores en x≈24,2 dan d = 0,26 / 0,07 / 0,11: misma X y
+distinto desplazamiento. El campo de error varía también en profundidad (Y), no
+solo en X.
+
+#### Reglas de uso que salen de esto
+
+**Los 4 puntos deben encerrar la zona de la jugada, no abrirse al máximo.** Una
+homografía es precisa cerca de donde se ajusta. Como el sistema es semiautomático
+y el usuario ya está pinchando, que pinche alrededor de la acción: área, penalti y
+córner si la jugada es en el área; puntos del centro si es en el centro. (Esto
+corrige la regla contraria que se dio antes de medir.)
+
+**No hace falta saber cuál de las dos homografías es "la buena"** para el
+veredicto: un sesgo compartido se cancela al comparar atacante contra defensa. La
+superposición del modelo del campo sobre la foto queda pendiente, pero solo para
+poder afirmar que los metros del dibujo son correctos.
+
+#### Precisión honesta, para el README
+
+±0,45 m **no es VAR**. El VAR usa varias cámaras sincronizadas y seguimiento de
+extremidades precisamente porque medio metro no vale a nivel profesional. Este
+sistema resuelve fueras de juego claros, no los de milímetros. Decirlo de frente
+vale más que inflar el número.
+
+#### Pendiente, menor
+
+- `guardar(imgId, correspondencias)` / `cargar(imgId)` sobre un JSON en `data/`,
+  para que las calibraciones sobrevivan al notebook.
+- En el notebook 1.7, `separarPorCampo(metros)` se calcula y no se usa: se dibuja
+  `metros` entero. Para filtrar manteniendo la correspondencia con los equipos hay
+  que filtrar el par, no el punto: `[m for m, e in zip(metros, equipos) if e == "e0"
+  and enCampo(m)]`.
 
 ### PUNTO 2 — el reparto por equipos
 

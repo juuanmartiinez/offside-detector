@@ -55,3 +55,26 @@ def marcarPuntos(imagen, orden):
     pixeles = plt.ginput(len(orden), timeout=0)
 
     return [(pixel, PUNTOS_CAMPO[nombre]) for pixel, nombre in zip(pixeles, orden)]
+
+def calibrar(imagen, n=4):
+
+    fig, ax = plt.subplots(figsize=(12, 12))
+    ax.imshow(imagen)
+
+    print(f"pincha {n} puntos (los marca segun los pinchas) y luego los nombras")
+    pixeles = plt.ginput(n, timeout=0)
+    plt.close(fig)
+
+    print("disponibles:", ", ".join(PUNTOS_CAMPO))
+
+    while True:
+        nombres = [x.strip() for x in input(f"los {n} nombres, en el orden que pinchaste: ").split(",") if x.strip()]
+        malos = [x for x in nombres if x not in PUNTOS_CAMPO]
+        if malos:
+            print("no existen:", malos)
+        elif len(nombres) != n:
+            print(f"has dado {len(nombres)} y hacen falta {n}")
+        else:
+            break
+
+    return [(p, PUNTOS_CAMPO[nm]) for p, nm in zip(pixeles, nombres)]
