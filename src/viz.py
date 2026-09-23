@@ -9,6 +9,10 @@ COLORES = {
     "goalkeeper": "blue",
     "referee":    "yellow",
     "ball":       "lime",
+    "ata":        "cyan",
+    "def":        "magenta",
+    "x":          "cyan",
+    "dudoso":     "gray",
 }
 
 def dibujarCajas(ax, pares, colores=COLORES, grosor=1):
@@ -48,8 +52,8 @@ def bandaCentral(caja):
     ancho = x2 - x1
     alto = y2 - y1
 
-    nx1 = x1 + ancho * 0.25
-    nx2 = x2 - ancho * 0.25
+    nx1 = x1 + ancho * 0.10
+    nx2 = x2 - ancho * 0.10
 
     ny1 = y1 + alto * 0.15
     ny2 = y1 + alto * 0.45
@@ -118,6 +122,10 @@ def dibujarCampo(ax, L=105.0, W=68.0, color="white", grosor=2):
     ax.set_aspect("equal")
 
 def dibujarPuntosCenital(ax, puntos, color="yellow"):
+
+    if not len(puntos):
+        return
+
     xs, ys = zip(*puntos)
     ax.scatter(xs, ys, s=130, c=color, ec="black", lw=1.2, zorder=5,
     label=f"en el campo ({len(puntos)})")

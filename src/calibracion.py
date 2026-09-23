@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+from src.viz import dibujarCajas
 
 PUNTOS_CAMPO = {
     # --- córners
@@ -56,25 +57,39 @@ def marcarPuntos(imagen, orden):
 
     return [(pixel, PUNTOS_CAMPO[nombre]) for pixel, nombre in zip(pixeles, orden)]
 
-def calibrar(imagen, n=4):
+def marcarJugadores(imagen, cajas):
 
-    fig, ax = plt.subplots(figsize=(12, 12))
+    fig, ax = plt.subplots(figsize=(12,12))
     ax.imshow(imagen)
+    dibujarCajas(ax, [(c, "x") for c in cajas], colores={"x": "cyan"})
 
-    print(f"pincha {n} puntos (los marca segun los pinchas) y luego los nombras")
-    pixeles = plt.ginput(n, timeout=0)
-    plt.close(fig)
-
-    print("disponibles:", ", ".join(PUNTOS_CAMPO))
+    print(f"Pincha primero a un atacante y luego a un defensor cualquiera.")
 
     while True:
-        nombres = [x.strip() for x in input(f"los {n} nombres, en el orden que pinchaste: ").split(",") if x.strip()]
-        malos = [x for x in nombres if x not in PUNTOS_CAMPO]
-        if malos:
-            print("no existen:", malos)
-        elif len(nombres) != n:
-            print(f"has dado {len(nombres)} y hacen falta {n}")
+        pixeles = plt.ginput(2, timeout=0)
+
+        atacante = cajaEnPunto(cajas, pixeles[0])
+        defensor = cajaEnPunto(cajas, pixeles[1])
+
+        if atacante is None or defensor is None:
+            print("algun clic no cayo dentro de ninguna caja, repite")
+        elif atacante == defensor:
+            print("has pinchado dos veces al mismo jugador")
         else:
             break
 
-    return [(p, PUNTOS_CAMPO[nm]) for p, nm in zip(pixeles, nombres)]
+    plt.close(fig)
+
+    return atacante, defensor
+
+def cajaEnPunto(cajas, punto):
+
+    x, y = punto
+
+    dentro = [i for i, (x1, y1, x2, y2) in enumerate(cajas)
+              if x1 <= x <= x2 and y1 <= y <= y2]
+
+    if not dentro:
+        return None
+
+    return min(dentro, key=lambda i: (cajas[i][2] - cajas[i][0]) * (cajas[i][3] - cajas[i][1]))

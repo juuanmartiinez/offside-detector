@@ -1,21 +1,21 @@
 import numpy as np
+
 from src.viz import recortesTorso
-from src.equipos import colorRecorte, descriptor, clasificarEquipos
+from src.equipos import descriptorCamisetas, clasificarPorSemillas
 
-def analizarImagen(ds, imgId, cajas=None):
-
-    if cajas is None:
-            cajas = [c for c, k in ds.cajas(imgId) if k != "ball"]
+def descriptores(ds, imgId, cajas):
 
     recortes = recortesTorso(ds, imgId, cajas)
-    colores  = np.array([colorRecorte(r) for r in recortes])
 
-    X = descriptor(colores)
-    et = clasificarEquipos(X, k=2)
+    return np.array([descriptorCamisetas(r) for r in recortes])
 
-    pares = [(caja, f"e{e}") for caja, e in zip(cajas, et)]
 
-    return pares
+def analizarImagen(ds, imgId, cajas, iAtacante, iDefensor):
+
+    X = descriptores(ds, imgId, cajas)
+    etiquetas = clasificarPorSemillas(X[:, :1], iAtacante, iDefensor)
+
+    return list(zip(cajas, etiquetas))
     
 
     
