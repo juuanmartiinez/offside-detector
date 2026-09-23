@@ -60,18 +60,13 @@ def bandaCentral(caja):
 
     return nx1, ny1, nx2, ny2
 
-def recortesTorso(ds, imgId, cajas=None):
+def recortesTorso(imagen, cajas):
 
-    img = ds.imagen(imgId)
     recortes = []
-
-    if cajas is None:
-        cajas = [c for c, k in ds.cajas(imgId)]
-
 
     for caja in cajas:
         x1, y1, x2, y2 = bandaCentral(caja)
-        recortes.append(img.crop((x1, y1, x2, y2)))
+        recortes.append(imagen.crop((x1, y1, x2, y2)))
 
     return recortes
 
