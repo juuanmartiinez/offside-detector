@@ -129,3 +129,21 @@ def dibujarPuntosCenital(ax, puntos, color="yellow"):
     xs, ys = zip(*puntos)
     ax.scatter(xs, ys, s=130, c=color, ec="black", lw=1.2, zorder=5,
     label=f"en el campo ({len(puntos)})")
+
+def dibujarEscena(ax, metros, etiquetas, xLinea=None, iDefensa=None):
+
+    metros    = np.asarray(metros)
+    etiquetas = np.asarray(etiquetas)
+
+    dibujarCampo(ax)
+
+    for etiqueta in ("ata", "def", "dudoso"):
+        dibujarPuntosCenital(ax, metros[etiquetas == etiqueta],
+                             color=COLORES.get(etiqueta, "white"))
+
+    if xLinea is not None:
+        ax.axvline(xLinea, color="yellow", lw=2)
+
+    if iDefensa is not None:
+        ax.scatter(metros[iDefensa, 0], metros[iDefensa, 1], s=260,
+                   facecolors="none", edgecolors="yellow", lw=2.5, zorder=6)
