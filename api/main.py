@@ -4,6 +4,8 @@ from uuid import uuid4
 
 import torch
 from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi.staticfiles import StaticFiles          
+
 from PIL import Image
 
 from src.modelo import crearModelo
@@ -84,3 +86,5 @@ def analizar(peticion: PeticionAnalisis):
         "resultado": r["resultado"],
         "riesgo":    r["riesgo"],
     }
+
+app.mount("/", StaticFiles(directory="web", html=True), name="web")

@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Detector de fuera de juego</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+
+<!-- Marcas del campo, definidas una vez y reutilizadas con <use> en el plano y en el cenital.
+     Coordenadas en metros: 0..105 de ancho, 0..68 de alto. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="marcasCampo">
+    <rect x="-7" y="-7" width="119" height="82" fill="var(--cesped)" rx="1.4"></rect>
+    <g fill="none" stroke="#ffffff" stroke-width=".45" stroke-opacity=".85">
+      <rect x="0" y="0" width="105" height="68"></rect>
+      <path d="M 52.5 0 V 68"></path>
+      <circle cx="52.5" cy="34" r="9.15"></circle>
+      <path d="M 0 13.84 H 16.5 V 54.16 H 0"></path>
+      <path d="M 0 24.84 H 5.5 V 43.16 H 0"></path>
+      <path d="M 105 13.84 H 88.5 V 54.16 H 105"></path>
+      <path d="M 105 24.84 H 99.5 V 43.16 H 105"></path>
+      <rect x="-1.8" y="30.34" width="1.8" height="7.32"></rect>
+      <rect x="105" y="30.34" width="1.8" height="7.32"></rect>
+    </g>
+    <g fill="#ffffff" fill-opacity=".85">
+      <circle cx="52.5" cy="34" r=".55"></circle>
+      <circle cx="11" cy="34" r=".55"></circle>
+      <circle cx="94" cy="34" r=".55"></circle>
+    </g>
+  </symbol>
+</svg>
+
+<header class="cabecera">
+  <span class="escudo" aria-hidden="true">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6">
+      <rect x="2" y="5" width="20" height="14" rx="1.5"></rect>
+      <path d="M12 5v14"></path>
+      <circle cx="12" cy="12" r="2.6"></circle>
+      <path d="M2 9h3v6H2M22 9h-3v6h3"></path>
+    </svg>
+  </span>
+  <div>
+    <h1>Detector de fuera de juego</h1>
+    <p class="lema">Seis clics sobre una foto y el veredicto en coordenadas reales del campo.</p>
+  </div>
+</header>
+
+<main class="rejilla">
+  <div class="trabajo">
+
+    <!-- ============ LA FOTO: superficie de clic ============ -->
+    <article class="panel">
+      <header class="panel-cab">
+        <h2>Foto</h2>
+        <span class="meta" id="metaFoto">Sin imagen</span>
+      </header>
+
+      <div class="lienzo">
+        <!-- .soporte es position:relative; la capa SVG se estira encima de la imagen,
+             asi que dibujas en coordenadas de la imagen original sin escalar nada. -->
+        <div class="soporte" id="soporte">
+          <img id="foto" alt="Foto del partido" hidden>
+          <svg id="capa" preserveAspectRatio="none" hidden></svg>
+
+          <label class="zona" id="zonaSubida">
+            <input type="file" id="archivo" accept="image/*">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+              <path d="M12 16V4M12 4 8 8M12 4l4 4"></path>
+              <path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"></path>
+            </svg>
+            <b>Elegir una foto del partido</b>
+            <small>Se ve mejor con un plano abierto donde se distinga la línea defensiva.</small>
+          </label>
+
+          <div class="cargando" id="cargando" hidden>
+            <span class="girando"></span> Detectando jugadores…
+          </div>
+        </div>
+      </div>
+
+      <div class="leyenda" id="leyendaFoto" hidden>
+        <span class="clave"><i class="punto" style="background:var(--ata)"></i> Atacante</span>
+        <span class="clave"><i class="punto" style="background:var(--def)"></i> Defensa</span>
+        <span class="clave"><i class="punto" style="background:var(--dudoso)"></i> Sin equipo asignado</span>
+        <span class="clave">El punto marca el pie, que es lo que se transforma a metros.</span>
+      </div>
+    </article>
+
+    <!-- ============ EL PLANO: segundo clic de cada correspondencia ============ -->
+    <article class="panel" id="panelPlano" hidden>
+      <header class="panel-cab">
+        <h2>Plano del campo</h2>
+        <span class="meta" id="metaPlano">0 de 4 puntos</span>
+      </header>
+      <div class="lienzo">
+        <svg id="plano" viewBox="-7 -7 119 82" class="clicable"
+             role="application" aria-label="Plano del campo: marca aquí el mismo punto que en la foto">
+          <use href="#marcasCampo"></use>
+          <g id="puntosPlano"></g>
+        </svg>
+      </div>
+    </article>
+
+    <!-- ============ EL CENITAL: resultado ============ -->
+    <article class="panel" id="panelCenital" hidden>
+      <header class="panel-cab">
+        <h2>Vista cenital</h2>
+        <span class="meta">105 × 68 m</span>
+      </header>
+      <div class="lienzo">
+        <svg id="cenital" viewBox="-7 -7 119 82"
+             role="img" aria-label="Plano cenital con los jugadores y la línea de fuera de juego">
+          <use href="#marcasCampo"></use>
+          <g id="lineaCenital"></g>
+          <g id="puntosCenital"></g>
+        </svg>
+      </div>
+    </article>
+
+  </div>
+
+  <!-- ============ RAIL: pasos, instrucción y resultado ============ -->
+  <aside class="rail">
+
+    <ol class="pasos" id="pasos">
+      <li class="paso activo" data-paso="1">
+        <span class="n">1</span>
+        <span><b>Subir la foto</b><small>El detector marca a los jugadores.</small></span>
+      </li>
+      <li class="paso" data-paso="2">
+        <span class="n">2</span>
+        <span><b>Señalar un jugador de cada equipo</b><small>Primero un atacante, después un defensa.</small></span>
+      </li>
+      <li class="paso" data-paso="3">
+        <span class="n">3</span>
+        <span><b>Marcar cuatro puntos del campo</b><small>En la foto y en el plano, por parejas.</small></span>
+      </li>
+      <li class="paso" data-paso="4">
+        <span class="n">4</span>
+        <span><b>Elegir hacia dónde se ataca</b><small>Hacia qué portería va el equipo atacante.</small></span>
+      </li>
+    </ol>
+
+    <div class="instruccion" id="instruccion">
+      <p class="etiqueta">Ahora</p>
+      <p id="textoInstruccion">Elige una foto para empezar.</p>
+
+      <div class="botones" id="botonesDireccion" hidden>
+        <button type="button" class="boton" data-direccion="izquierda">← Ataca a la izquierda</button>
+        <button type="button" class="boton" data-direccion="derecha">Ataca a la derecha →</button>
+      </div>
+
+      <button type="button" class="boton secundario" id="deshacer" hidden>Deshacer el último clic</button>
+    </div>
+
+    <div class="veredicto" id="veredicto" hidden>
+      <div class="cinta" id="cinta"></div>
+      <div class="cuerpo">
+        <p class="etiqueta">Veredicto</p>
+        <p class="titular" id="titular"></p>
+        <p class="detalle" id="detalleVeredicto"></p>
+
+        <table class="tabla" id="tablaAtacantes" hidden>
+          <thead><tr><th>Atacante</th><th>Margen</th><th>Estado</th></tr></thead>
+          <tbody id="cuerpoTabla"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="aviso" id="aviso" hidden>
+      <h3 id="tituloAviso"></h3>
+      <p id="textoAviso"></p>
+      <button type="button" class="accion" id="resolverDudosos">Asignarles equipo</button>
+    </div>
+
+    <p class="nota">
+      Precisión medida: <b>±0,45 m</b> entre jugadores cercanos. Por debajo de medio metro el
+      sistema no afirma nada y marca la jugada como ajustada. Esto no es el VAR, que usa varias
+      cámaras sincronizadas y seguimiento de extremidades.
+    </p>
+
+    <button type="button" class="boton secundario" id="reiniciar" hidden>Empezar de nuevo</button>
+
+  </aside>
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>

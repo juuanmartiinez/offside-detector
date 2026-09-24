@@ -1,0 +1,306 @@
+/* ---------------------------------------------------------------
+   Detector de fuera de juego — estilos de la interfaz
+   Los colores de equipo son los mismos que src/viz.py (COLORES),
+   para que la web y los notebooks hablen el mismo idioma.
+   --------------------------------------------------------------- */
+
+:root{
+  color-scheme: light;
+  --fondo:#f4f7f3;
+  --panel:#ffffff;
+  --panel2:#eef2ed;
+  --tinta:#14201a;
+  --suave:#5d6b63;
+  --borde:#dde4dd;
+  --cesped:#2e7d4f;
+  --cesped2:#256440;
+  --acento:#d98b1e;
+  --ata:#1b7fc4;
+  --def:#b8388f;
+  --dudoso:#8e9891;
+  --fuera:#c0392b;
+  --ok:#2e7d4f;
+  --sombra:0 1px 2px rgba(20,32,26,.05), 0 8px 24px -16px rgba(20,32,26,.28);
+
+  --display:"Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
+  --texto:"Barlow", system-ui, -apple-system, sans-serif;
+}
+
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme: dark;
+    --fondo:#0e1411;
+    --panel:#171f1b;
+    --panel2:#1f2925;
+    --tinta:#e9efe9;
+    --suave:#94a29a;
+    --borde:#28342d;
+    --cesped:#2a6e46;
+    --cesped2:#1f5435;
+    --acento:#efad45;
+    --ata:#4aa9e6;
+    --def:#d45fb0;
+    --dudoso:#7b857e;
+    --fuera:#e3654f;
+    --ok:#4cae72;
+    --sombra:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+  }
+}
+
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --fondo:#0e1411;
+  --panel:#171f1b;
+  --panel2:#1f2925;
+  --tinta:#e9efe9;
+  --suave:#94a29a;
+  --borde:#28342d;
+  --cesped:#2a6e46;
+  --cesped2:#1f5435;
+  --acento:#efad45;
+  --ata:#4aa9e6;
+  --def:#d45fb0;
+  --dudoso:#7b857e;
+  --fuera:#e3654f;
+  --ok:#4cae72;
+  --sombra:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+}
+
+*{box-sizing:border-box}
+
+html,body{margin:0}
+
+body{
+  background:var(--fondo);
+  color:var(--tinta);
+  font-family:var(--texto);
+  font-size:15px;
+  line-height:1.5;
+  padding-inline:20px;
+  padding-block:0 40px;
+  max-width:1180px;
+  margin:0 auto;
+}
+
+img{max-width:100%}
+[hidden]{display:none !important}
+
+:where(a,button,input,summary):focus-visible{
+  outline:2px solid var(--acento);
+  outline-offset:2px;
+}
+
+/* ---------- cabecera ---------- */
+
+.cabecera{
+  display:flex; align-items:center; gap:14px;
+  padding-block:26px 20px;
+  border-bottom:1px solid var(--borde);
+  margin-bottom:22px;
+}
+.escudo{
+  width:40px; height:40px; flex:none; border-radius:9px;
+  background:linear-gradient(160deg,var(--cesped),var(--cesped2));
+  display:grid; place-items:center;
+}
+.escudo svg{display:block}
+h1{
+  font-family:var(--display);
+  font-size:26px; font-weight:700; letter-spacing:.005em;
+  margin:0; line-height:1.1; text-wrap:balance;
+}
+.lema{margin:2px 0 0; color:var(--suave); font-size:14px}
+
+/* ---------- rejilla ---------- */
+
+.rejilla{display:grid; grid-template-columns:minmax(0,1fr) 316px; gap:20px; align-items:start}
+.trabajo{display:grid; gap:20px; min-width:0}
+
+.panel{
+  background:var(--panel);
+  border:1px solid var(--borde);
+  border-radius:12px;
+  box-shadow:var(--sombra);
+  overflow:hidden;
+}
+.panel-cab{
+  display:flex; align-items:baseline; justify-content:space-between; gap:12px;
+  padding:12px 14px; border-bottom:1px solid var(--borde);
+}
+.panel-cab h2{
+  font-family:var(--display); font-size:15px; font-weight:600;
+  text-transform:uppercase; letter-spacing:.09em; margin:0;
+}
+.meta{color:var(--suave); font-size:12.5px; font-variant-numeric:tabular-nums}
+
+.lienzo{padding:14px; display:grid; gap:10px; min-width:0}
+.lienzo svg{width:100%; height:auto; max-width:100%; display:block; border-radius:8px}
+
+/* ---------- la foto y su capa de dibujo ----------
+   La capa SVG se estira sobre la imagen con preserveAspectRatio="none".
+   Poniendo viewBox="0 0 anchoOriginal altoOriginal" dibujas en coordenadas
+   de la imagen original: no hay que escalar nada al pintar.
+   Al LEER un clic sí hay que convertir (ver la nota en app.js).           */
+
+.soporte{position:relative; min-width:0; border-radius:8px; overflow:hidden}
+.soporte img{display:block; width:100%; height:auto; border-radius:8px}
+.soporte svg{
+  position:absolute; inset:0;
+  width:100%; height:100%;
+  border-radius:8px;
+}
+.soporte svg.clicable{cursor:crosshair}
+
+/* zona de subida */
+.zona{
+  display:grid; place-items:center; gap:6px; text-align:center;
+  padding:46px 20px;
+  border:1.5px dashed var(--borde);
+  border-radius:10px;
+  background:var(--panel2);
+  color:var(--suave);
+  cursor:pointer;
+  transition:border-color .15s, color .15s;
+}
+.zona:hover, .zona:focus-within{border-color:var(--cesped); color:var(--tinta)}
+.zona b{font-size:15px; color:var(--tinta)}
+.zona small{font-size:12.5px; max-width:34ch; line-height:1.35}
+.zona input[type="file"]{
+  position:absolute; width:1px; height:1px;
+  opacity:0; pointer-events:none;
+}
+
+.cargando{
+  position:absolute; inset:0;
+  display:grid; place-content:center; gap:10px; justify-items:center;
+  background:color-mix(in srgb, var(--panel) 82%, transparent);
+  color:var(--suave); font-size:13.5px;
+  border-radius:8px;
+}
+.girando{
+  width:22px; height:22px; border-radius:50%;
+  border:2.5px solid var(--borde); border-top-color:var(--cesped);
+  animation:girar .8s linear infinite;
+}
+@keyframes girar{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){
+  .girando{animation-duration:2.4s}
+}
+
+/* ---------- leyenda ---------- */
+
+.leyenda{
+  display:flex; flex-wrap:wrap; gap:6px 16px;
+  padding:0 14px 14px; font-size:12.5px; color:var(--suave);
+}
+.clave{display:inline-flex; align-items:center; gap:6px}
+.punto{width:10px; height:10px; border-radius:50%; border:1.5px solid rgba(0,0,0,.35)}
+
+/* ---------- rail ---------- */
+
+.rail{display:grid; gap:14px; min-width:0}
+
+.pasos{list-style:none; margin:0; padding:0; display:grid; gap:2px}
+.paso{
+  display:grid; grid-template-columns:24px 1fr; gap:10px; align-items:start;
+  padding:9px 12px; border-radius:9px; border:1px solid transparent;
+}
+.paso .n{
+  width:24px; height:24px; border-radius:50%;
+  display:grid; place-items:center;
+  font-family:var(--display); font-size:13px; font-weight:600;
+  background:var(--panel2); color:var(--suave); border:1px solid var(--borde);
+}
+.paso b{display:block; font-weight:600; font-size:14px}
+.paso small{display:block; color:var(--suave); font-size:12.5px; line-height:1.35}
+.paso.hecho .n{background:var(--cesped); color:#fff; border-color:transparent}
+.paso.activo{background:var(--panel); border-color:var(--borde); box-shadow:var(--sombra)}
+.paso.activo .n{background:var(--acento); color:#241704; border-color:transparent}
+
+/* ---------- instrucción ---------- */
+
+.instruccion{
+  background:var(--panel); border:1px solid var(--borde);
+  border-radius:12px; padding:14px; box-shadow:var(--sombra);
+}
+.instruccion p{margin:0}
+.etiqueta{
+  font-family:var(--display); text-transform:uppercase; letter-spacing:.11em;
+  font-size:11.5px; color:var(--suave); margin:0 0 4px !important;
+}
+.botones{display:grid; gap:8px; margin-top:12px}
+
+.boton{
+  font-family:var(--texto); font-size:13.5px; font-weight:600;
+  padding:9px 12px; border-radius:8px; cursor:pointer;
+  background:var(--cesped); color:#fff; border:1px solid transparent;
+}
+.boton:hover{background:var(--cesped2)}
+.boton.secundario{
+  background:transparent; color:var(--suave); border-color:var(--borde);
+  margin-top:10px;
+}
+.boton.secundario:hover{color:var(--tinta); border-color:var(--suave)}
+
+/* ---------- veredicto ---------- */
+
+.veredicto{
+  background:var(--panel); border:1px solid var(--borde); border-radius:12px;
+  box-shadow:var(--sombra); overflow:hidden;
+}
+.cinta{height:4px; background:var(--ok)}
+.cinta.fuera{background:var(--fuera)}
+.cinta.ajustado{background:var(--acento)}
+.veredicto .cuerpo{padding:14px}
+.titular{
+  font-family:var(--display); font-size:27px; font-weight:700; line-height:1.05;
+  margin:0 0 8px !important; color:var(--ok); text-wrap:balance;
+}
+.titular.fuera{color:var(--fuera)}
+.titular.ajustado{color:var(--acento)}
+.detalle{font-size:13.5px; color:var(--suave)}
+.detalle b{color:var(--tinta); font-variant-numeric:tabular-nums}
+
+.tabla{width:100%; border-collapse:collapse; margin-top:12px; font-size:13px}
+.tabla th{
+  text-align:left; font-family:var(--display); font-weight:600;
+  text-transform:uppercase; letter-spacing:.07em; font-size:11px;
+  color:var(--suave); padding:0 0 4px; border-bottom:1px solid var(--borde);
+}
+.tabla td{padding:5px 0; border-bottom:1px solid var(--borde); font-variant-numeric:tabular-nums}
+.tabla td:last-child, .tabla th:last-child{text-align:right}
+
+.chip{
+  display:inline-block; padding:1px 7px; border-radius:20px;
+  font-size:11.5px; font-weight:600;
+  background:color-mix(in srgb, var(--ok) 14%, transparent); color:var(--ok);
+}
+.chip.ajustado{background:color-mix(in srgb, var(--acento) 18%, transparent); color:var(--acento)}
+.chip.fuera{background:color-mix(in srgb, var(--fuera) 14%, transparent); color:var(--fuera)}
+
+/* ---------- aviso de dudosos ---------- */
+
+.aviso{
+  border:1px solid color-mix(in srgb, var(--acento) 40%, var(--borde));
+  background:color-mix(in srgb, var(--acento) 9%, var(--panel));
+  border-radius:12px; padding:12px 14px;
+}
+.aviso h3{
+  font-family:var(--display); font-size:13px; font-weight:600; margin:0 0 4px;
+  text-transform:uppercase; letter-spacing:.08em; color:var(--acento);
+}
+.aviso p{margin:0; font-size:13px; color:var(--tinta)}
+.aviso .accion{
+  margin-top:10px; font-size:13px; font-weight:600;
+  padding:6px 11px; border-radius:7px; cursor:pointer;
+  background:var(--acento); color:#241704; border:0; font-family:var(--texto);
+}
+
+.nota{font-size:12.5px; color:var(--suave); margin:0; padding:0 2px}
+.nota b{color:var(--tinta)}
+
+/* ---------- teléfono ---------- */
+
+@media (max-width:860px){
+  .rejilla{grid-template-columns:1fr}
+}
