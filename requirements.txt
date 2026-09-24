@@ -1,9 +1,19 @@
-# Fase 1 — detección + agrupación por apariencia
+--index-url https://download.pytorch.org/whl/cpu
+--extra-index-url https://pypi.org/simple
+
+# nucleo
 torch
 torchvision
 opencv-python
 numpy
+pillow
+
+# API web
+fastapi
+uvicorn[standard]
+python-multipart
+
+# desarrollo
 matplotlib
-scikit-learn      # KMeans y métricas, hitos 1.5 y 1.6
-pycocotools       # lectura de anotaciones en formato COCO, hito 1.0
 jupyter
+ipykernel

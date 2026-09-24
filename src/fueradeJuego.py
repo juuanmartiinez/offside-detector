@@ -68,4 +68,4 @@ def dudososEnRiesgo(metros, etiquetas, sentido, xLinea):
 
     dudosos = np.flatnonzero(etiquetas == "dudoso")
 
-    return [int(i) for i in dudosos if sentido * (metros[i, 0] - xLinea) < 0]
+    return [int(i) for i in dudosos if sentido * (metros[i, 0] - xLinea) > 0]
