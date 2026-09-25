@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="estilo.css">
+<link rel="stylesheet" href="estilo.css?v=7">
 </head>
 <body>
 
@@ -65,15 +65,10 @@
              asi que dibujas en coordenadas de la imagen original sin escalar nada. -->
         <div class="soporte" id="soporte">
           <img id="foto" alt="Foto del partido" hidden>
-          <svg id="capa" preserveAspectRatio="none" hidden></svg>
+          <svg id="capa" preserveAspectRatio="none"></svg>
 
           <label class="zona" id="zonaSubida">
             <input type="file" id="archivo" accept="image/*">
-            <svg width="30" height="30" viewBox="0 0 24 24" fill="none"
-                 stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
-              <path d="M12 16V4M12 4 8 8M12 4l4 4"></path>
-              <path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"></path>
-            </svg>
             <b>Elegir una foto del partido</b>
             <small>Se ve mejor con un plano abierto donde se distinga la línea defensiva.</small>
           </label>
@@ -88,7 +83,7 @@
         <span class="clave"><i class="punto" style="background:var(--ata)"></i> Atacante</span>
         <span class="clave"><i class="punto" style="background:var(--def)"></i> Defensa</span>
         <span class="clave"><i class="punto" style="background:var(--dudoso)"></i> Sin equipo asignado</span>
-        <span class="clave">El punto marca el pie, que es lo que se transforma a metros.</span>
+        <span class="clave">Lo que se transforma a metros es el pie de cada caja.</span>
       </div>
     </article>
 
@@ -190,6 +185,6 @@
   </aside>
 </main>
 
-<script src="app.js"></script>
+<script src="app.js?v=7"></script>
 </body>
 </html>

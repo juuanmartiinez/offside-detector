@@ -15,8 +15,9 @@
   --cesped:#2e7d4f;
   --cesped2:#256440;
   --acento:#d98b1e;
-  --ata:#1b7fc4;
-  --def:#b8388f;
+  --ata:#ffff00;
+  --def:#ff0000;
+  --linea:#ff0000;
   --dudoso:#8e9891;
   --fuera:#c0392b;
   --ok:#2e7d4f;
@@ -38,8 +39,9 @@
     --cesped:#2a6e46;
     --cesped2:#1f5435;
     --acento:#efad45;
-    --ata:#4aa9e6;
-    --def:#d45fb0;
+    --ata:#ffff00;
+    --def:#ff0000;
+    --linea:#ff0000;
     --dudoso:#7b857e;
     --fuera:#e3654f;
     --ok:#4cae72;
@@ -58,8 +60,9 @@
   --cesped:#2a6e46;
   --cesped2:#1f5435;
   --acento:#efad45;
-  --ata:#4aa9e6;
-  --def:#d45fb0;
+  --ata:#ffff00;
+  --def:#ff0000;
+  --linea:#ff0000;
   --dudoso:#7b857e;
   --fuera:#e3654f;
   --ok:#4cae72;
@@ -144,12 +147,21 @@ h1{
 
 .soporte{position:relative; min-width:0; border-radius:8px; overflow:hidden}
 .soporte img{display:block; width:100%; height:auto; border-radius:8px}
-.soporte svg{
+/* Solo #capa, no cualquier svg de dentro: si no, los iconos que haya
+   en la zona de subida tambien se volverian absolutos y a pantalla completa. */
+#capa{
   position:absolute; inset:0;
   width:100%; height:100%;
   border-radius:8px;
+  pointer-events:none;          /* mientras no toque pinchar, deja pasar los clics */
 }
-.soporte svg.clicable{cursor:crosshair}
+#capa.clicable{pointer-events:auto; cursor:crosshair}
+
+/* El SVG se estira sobre la foto, asi que un trazo de 1 unidad del viewBox se
+   agranda con ella y engorda. Con non-scaling-stroke el grosor se mide en
+   pixeles de pantalla, no en unidades del viewBox: sale fino y constante,
+   como el linewidth=1 de matplotlib, se mire la foto al tamano que se mire. */
+#capa rect, #capa line, #capa circle{ vector-effect:non-scaling-stroke }
 
 /* zona de subida */
 .zona{

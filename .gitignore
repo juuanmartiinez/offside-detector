@@ -6,5 +6,5 @@ __pycache__/
 .ipynb_checkpoints/
 .venv/
 venv/
-*.md
+PLAN.md
 data/subidas/

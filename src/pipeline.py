@@ -2,7 +2,7 @@ import numpy as np
 import torch
 
 from src.viz import recortesTorso
-from src.equipos import descriptorCamisetas, clasificarPorSemillas
+from src.equipos import descriptorCamisetas, clasificarPorSemillas, colorCesped
 from torchvision.transforms.functional import to_tensor
 from src.geometria import calcularHomografia, puntoApoyo, aMetros
 from src.campo import enCampo
@@ -13,7 +13,10 @@ def descriptores(imagen, cajas):
 
     recortes = recortesTorso(imagen, cajas)
 
-    return np.array([descriptorCamisetas(r) for r in recortes])
+    # El color del cesped se mide UNA vez por foto, no por recorte
+    cesped = colorCesped(imagen)
+
+    return np.array([descriptorCamisetas(r, cesped) for r in recortes])
 
 
 def analizarImagen(imagen, cajas, iAtacante, iDefensor):
