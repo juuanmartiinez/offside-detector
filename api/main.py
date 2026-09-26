@@ -29,11 +29,6 @@ async def lifespan(app):                                            # corre una 
 
 app = FastAPI(lifespan=lifespan)
 
-# SOLO PARA DESARROLLO. El middleware ve todas las respuestas antes de salir y
-# les pone Cache-Control: no-store, que le dice al navegador "no guardes copia".
-# Sin esto Firefox sirve el app.js viejo de su cache aunque el fichero haya
-# cambiado, y acabas depurando codigo que ya no existe. Al desplegar se quita:
-# en produccion si quieres que el navegador cachee el CSS y el JS.
 @app.middleware("http")
 async def sinCache(peticion, siguiente):
     respuesta = await siguiente(peticion)

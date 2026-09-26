@@ -62,11 +62,6 @@ const COLOR = {
     dudoso: "var(--dudoso)",
 };
 
-
-/* =========================================================
-   AYUDANTES
-   ========================================================= */
-
 function svgEl(nombre, atributos){
     const e = document.createElementNS(NS, nombre);
     for (const clave in atributos) e.setAttribute(clave, atributos[clave]);
@@ -118,11 +113,6 @@ function cajaEnPunto(x, y){
 
 const unMetro = (n) => n.toFixed(2).replace(".", ",");
 
-
-/* =========================================================
-   RED
-   ========================================================= */
-
 async function subir(fichero){
     const datos = new FormData();
     datos.append("archivo", fichero);          // mismo nombre que el parametro del endpoint
@@ -167,11 +157,6 @@ async function analizar(direccion){
     estado.analisis = await r.json();
     return { bien: true, motivo: null };
 }
-
-
-/* =========================================================
-   DIBUJO SOBRE LA FOTO
-   ========================================================= */
 
 // Aplica una homografia de 3x3 a un punto. Es lo que hacia
 // cv2.perspectiveTransform en Python: el punto se escribe como [x, y, 1], se
@@ -306,10 +291,6 @@ function marcarSenalados(){
 }
 
 
-/* =========================================================
-   DIBUJO SOBRE EL CAMPO
-   ========================================================= */
-
 function pintarPuntosPlano(){
     puntosPlano.replaceChildren();
 
@@ -369,11 +350,6 @@ function pintarCenital(){
         puntosCenital.append(p);
     });
 }
-
-
-/* =========================================================
-   EL VEREDICTO
-   ========================================================= */
 
 function pintarVeredicto(){
     const a = estado.analisis;
@@ -459,17 +435,12 @@ function pintarVeredicto(){
             "suficientes. Si fuera defensa, la línea se movería; si fuera atacante, estaría " +
             "en fuera de juego sin contarse.";
 
-        resolverDudosos.hidden = true;   // pendiente: necesita "forzados" en la API
+        resolverDudosos.hidden = true;   
         aviso.hidden = false;
     } else {
         aviso.hidden = true;
     }
 }
-
-
-/* =========================================================
-   LOS PASOS
-   ========================================================= */
 
 const INSTRUCCIONES = {
     1: "Elige una foto para empezar.",
@@ -522,11 +493,6 @@ function irAPaso(n){
     deshacer.hidden         = !(n === 2 || n === 3);
     reiniciar.hidden        = n === 1;
 }
-
-
-/* =========================================================
-   EVENTOS
-   ========================================================= */
 
 archivo.addEventListener("change", async () => {
     const fichero = archivo.files[0];
